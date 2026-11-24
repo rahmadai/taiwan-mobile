@@ -1,5 +1,5 @@
 {
-  "include": ["src", "tests"],
+  "include": ["src", "tests", "e2e"],
   "pythonVersion": "3.12",
   "typeCheckingMode": "standard",
   "strict": ["src"]

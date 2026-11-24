@@ -7,6 +7,7 @@ daily scheduler with per-user resource quotas.
 make install   # uv sync
 make demo      # legacy scenario: quota hit, no double run, next-day reset
 make check     # ruff format/lint, pyright, pytest (+coverage gate)
+make e2e       # black-box cases in e2e/TEST_CASES.md (real loop, sleeps, timeouts, 10k load)
 ```
 
 ## Usage

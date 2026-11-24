@@ -41,5 +41,12 @@ Tool: Claude Code (agentic, in-repo). Process: spec → steering → code, with 
   `pyrightconfig.json`, re-ran → genuinely clean under strict.
 - **Generic variance.** Test helpers typed `Action[BaseModel]`; pyright flagged invariance
   (`FlakyParams` ≠ `BaseModel`). Fixed to `Action[Any]` at the registry boundary.
+- **E2E load test found a real data-loss bug the unit tests missed.** TC15 (10k tasks,
+  queue max 1000) recorded only 1,032 runs: cancelling `run_forever` while a tick was
+  blocked on the full queue dropped every admitted-but-unqueued job with its quota spent
+  and no log. Unit tests never hit it because they drained instead of cancelling. Fix:
+  release un-enqueued jobs on cancellation; regression covered by a deterministic unit test
+  and e2e TC16. Lesson: the scale test was written to answer an interview question and
+  ended up being the most valuable test in the suite.
 - **Demo smoke test failed** because `caplog` drops INFO by default — a test bug, not a code
   bug; confirmed by running the demo directly and reading the log output first.

@@ -1,4 +1,4 @@
-.PHONY: install check fmt lint type test demo
+.PHONY: install check fmt lint type test e2e demo
 
 install:
 	uv sync
@@ -21,6 +21,9 @@ type:
 
 test:
 	uv run pytest
+
+e2e: ## black-box cases from e2e/TEST_CASES.md
+	uv run pytest e2e --no-cov -v -s
 
 demo:
 	uv run python -m taskflow

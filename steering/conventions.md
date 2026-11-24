@@ -30,8 +30,16 @@ implement `async execute(target, params)`, register it in `default_registry()` o
 registry. No scheduler/engine/executor change. Add a test like
 `test_new_action_plugs_in_without_engine_changes`.
 
+## Cancellation
+Any `await` between taking a resource and handing it off is a cancellation point. Undo
+the side effect in an `except asyncio.CancelledError:` block, then re-raise — see
+`TaskEngine.tick`. Cleanup code there must not await anything that can block.
+
 ## Testing
 - Pass time in (`tick(now)`), never read the wall clock in logic. Use aware datetimes.
 - Inject `sleep` (`RecordingSleep`) and `rng` so retry tests are instant and deterministic.
 - Shared helpers in `tests/helpers.py`. Name tests after the behaviour, map to spec ACs.
 - To see INFO logs in `caplog`, call `caplog.set_level(logging.INFO)`.
+- `tests/` = unit (direct `tick(now)`, instant sleeps). `e2e/` = black-box through the public
+  API/CLI with the real `run_forever` loop, real sleeps/timeouts; cases listed in
+  `e2e/TEST_CASES.md` (TC ids in test names). Add a TC row before adding an e2e test.
