@@ -20,6 +20,11 @@ not re-evaluated or re-logged on every tick that day.
 
 ## Consequences
 - Queue only ever holds admitted work → backpressure and quota are independent.
-- A job that is admitted but lost (process crash before execution) has consumed quota.
-  Acceptable in-memory; with a durable queue, the idempotency key `(task_id, run_date)`
-  plus a refund on dead-letter fixes it.
+- Admission and enqueue are separate steps, so there is a window where a job is admitted
+  but not queued. The e2e load test (TC16) showed that cancelling a tick in that window
+  silently lost ~9k of 10k jobs (quota spent, marked run, never executed, no log). Fixed:
+  `TaskEngine.tick` releases un-enqueued jobs on cancellation (`Scheduler.release` →
+  `QuotaManager.release`). Release is synchronous so it can run inside the
+  `CancelledError` handler.
+- A hard process crash still loses admitted jobs in memory. With a durable queue, the
+  idempotency key `(task_id, run_date)` plus a refund on dead-letter covers it.

@@ -68,6 +68,7 @@ def make_engine(
     policy: RetryPolicy = FAST,
     workers: int = 4,
     tz: dt.tzinfo = dt.UTC,
+    queue_maxsize: int = 1000,
 ) -> TaskEngine:
     return build_engine(
         users,
@@ -75,6 +76,7 @@ def make_engine(
         policy=policy,
         workers=workers,
         tz=tz,
+        queue_maxsize=queue_maxsize,
         sleep=RecordingSleep(),
         rng=random.Random(0),
     )

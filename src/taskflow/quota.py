@@ -62,6 +62,18 @@ class QuotaManager:
             self._usage[(user, day)] = used + 1
             return True
 
+    def release(self, user: str, day: dt.date) -> None:
+        """Return one unit taken by ``try_consume`` for a run that never started.
+
+        Synchronous on purpose: it must work inside cancellation handlers. It has no
+        await, so it is atomic on the event loop, and ``try_consume`` never holds the
+        lock across a suspension point, so the two cannot interleave.
+        """
+        used = self.used(user, day)
+        if used <= 0:
+            raise ValueError(f"nothing to release for user {user!r} on {day.isoformat()}")
+        self._usage[(user, day)] = used - 1
+
     def prune_before(self, day: dt.date) -> int:
         """Drop usage counters older than ``day``; returns how many were removed."""
         stale = [key for key in self._usage if key[1] < day]

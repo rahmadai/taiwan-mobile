@@ -134,6 +134,19 @@ class Scheduler:
             logger.info("tick.dispatched day=%s jobs=%d", today.isoformat(), len(jobs))
         return jobs
 
+    def release(self, job: Job) -> None:
+        """Undo admission of a job that was never executed (refund quota, re-arm task)."""
+        if self._last_dispatched.get(job.task.id) == job.run_date:
+            del self._last_dispatched[job.task.id]
+        self.quotas.release(job.task.user, job.run_date)
+        logger.warning(
+            "run.released task_id=%s user=%s action=%s day=%s",
+            job.task.id,
+            job.task.user,
+            job.task.action,
+            job.run_date.isoformat(),
+        )
+
     def _roll_day(self, today: dt.date) -> None:
         if self._current_day != today:
             self._current_day = today

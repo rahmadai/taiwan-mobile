@@ -47,3 +47,16 @@ async def test_prune_drops_only_old_days() -> None:
 
     assert quotas.prune_before(DAY) == 1
     assert quotas.used("alice", DAY) == 1
+
+
+async def test_release_refunds_one_unit_and_rejects_over_release() -> None:
+    quotas = QuotaManager({"alice": 1})
+    assert await quotas.try_consume("alice", DAY)
+
+    quotas.release("alice", DAY)
+
+    assert quotas.used("alice", DAY) == 0
+    assert await quotas.try_consume("alice", DAY)
+    quotas.release("alice", DAY)
+    with pytest.raises(ValueError, match="nothing to release"):
+        quotas.release("alice", DAY)

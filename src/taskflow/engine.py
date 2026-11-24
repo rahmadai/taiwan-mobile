@@ -69,9 +69,19 @@ class TaskEngine:
         if not self._workers:
             raise RuntimeError("engine is not started; call start() or use 'async with'")
         jobs = await self.scheduler.tick(now if now is not None else self._clock())
-        for job in jobs:
-            await self._queue.put(job)  # blocks when full -> backpressure
-        return len(jobs)
+        enqueued = 0
+        try:
+            for job in jobs:
+                await self._queue.put(job)  # blocks when full -> backpressure
+                enqueued += 1
+        except asyncio.CancelledError:
+            # Admitted jobs that never reached the queue would otherwise be lost with
+            # their quota spent; hand them back so the next tick re-admits them.
+            for job in jobs[enqueued:]:
+                self.scheduler.release(job)
+            logger.warning("tick.cancelled enqueued=%d released=%d", enqueued, len(jobs) - enqueued)
+            raise
+        return enqueued
 
     async def drain(self) -> None:
         """Wait until every enqueued job has been executed and recorded."""

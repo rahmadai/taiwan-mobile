@@ -34,6 +34,9 @@ Actions never see quota or scheduling; the scheduler never sees how actions run.
 2. `tick(now)` (aware datetime, converted to the configured tz): for each task in
    submission order, if `time <= now.time()` and not dispatched today → mark dispatched,
    then `try_consume`. Admitted → `Job`; refused → `QUOTA_EXCEEDED` record (once per day).
+   If the engine's tick is cancelled while blocked on a full queue (shutdown under load),
+   every admitted job not yet enqueued is **released**: quota refunded, dispatch mark
+   cleared, `tick.cancelled` + `run.released` logged. The next tick re-admits them.
 3. Workers pull jobs; `TaskExecutor` runs the action under `asyncio.timeout`, retrying
    `ActionError`/any exception with capped exponential backoff + jitter, not retrying
    `PermanentActionError`. Result → `RunRecord` in `RunLog`.

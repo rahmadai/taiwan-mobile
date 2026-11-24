@@ -196,3 +196,45 @@ async def test_run_forever_ticks_on_the_clock() -> None:
 def test_engine_rejects_zero_workers() -> None:
     with pytest.raises(ValueError, match="workers"):
         make_engine({"alice": 1}, workers=0)
+
+
+class _GateParams(BaseModel):
+    pass
+
+
+class _GateAction(Action[_GateParams]):
+    """Blocks every run until ``gate`` is set, to hold the queue full."""
+
+    name = "gate"
+    params_model = _GateParams
+
+    def __init__(self) -> None:
+        self.gate = asyncio.Event()
+
+    async def execute(self, target: str, params: _GateParams) -> None:
+        await self.gate.wait()
+
+
+async def test_cancelled_tick_releases_jobs_that_never_reached_the_queue(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    gate = _GateAction()
+    engine = make_engine({"alice": 5}, registry=registry_with(gate), workers=1, queue_maxsize=1)
+    engine.scheduler.submit_many(task(action="gate", target=f"/t{i}") for i in range(5))
+    await engine.start()
+
+    ticking = asyncio.create_task(engine.tick(NOON))
+    await asyncio.sleep(0.01)  # worker holds job 0, queue holds job 1, tick blocked on job 2
+    ticking.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await ticking
+
+    assert engine.scheduler.quotas.used("alice", NOON.date()) == 2  # 3 refunded
+    assert "tick.cancelled enqueued=2 released=3" in caplog.text
+    gate.gate.set()
+    await engine.drain()
+    assert await engine.tick(NOON + dt.timedelta(minutes=1)) == 3  # re-admitted, same day
+    await engine.stop()
+
+    assert len(engine.run_log.with_status(RunStatus.SUCCESS)) == 5
+    assert engine.scheduler.quotas.used("alice", NOON.date()) == 5
