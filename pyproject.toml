@@ -1,0 +1,33 @@
+[project]
+name = "taskflow"
+version = "0.1.0"
+description = "Strategy-based daily task scheduler with per-user resource quotas"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.9"]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.390",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "ASYNC", "RUF", "N", "G", "PT"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--cov=taskflow --cov-report=term-missing --cov-fail-under=90"
